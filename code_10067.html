@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Chat</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+:root{
+  --bg:#111;
+  --bg-secondary:#181818;
+  --bg-input:#1e1e1e;
+  --border:#272727;
+  --text:#eee;
+  --text-muted:#888;
+  --primary:#2563eb;
+  --danger:#991b1b;
+}
+body.light{
+  --bg:#ffffff;
+  --bg-secondary:#f3f4f6;
+  --bg-input:#e5e7eb;
+  --border:#d1d5db;
+  --text:#111;
+  --text-muted:#6b7280;
+  --primary:#2563eb;
+  --danger:#dc2626;
+}
+body{background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;transition:background 0.2s,color 0.2s}
+/* 移动端折叠按钮 */
+.sidebar-toggle{
+  display:none;
+  position:absolute;
+  top:12px;
+  left:12px;
+  z-index:100;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:6px 10px;
+}
+/* 侧边栏 */
+.sidebar{width:280px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform 0.3s ease;}
+.sidebar-header{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.sidebar-title{font-size:18px;font-weight:500}
+.user-info{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center}
+.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#333}
+.user-meta{flex:1}
+.user-name{font-size:14px;font-weight:500}
+.user-email{font-size:12px;color:var(--text-muted)}
+.login-tip{color:#999;font-size:13px}
+.community-tab-btn,.group-tab-btn,.profile-tab-btn,.theme-tab-btn{
+  margin:4px 16px;
+}
+.conversation-list{flex:1;overflow-y:auto}
+.conv-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid #222;transition:background 0.2s;display:flex;justify-content:space-between;align-items:center}
+.conv-item:hover,.conv-item.active{background:#242424}
+body.light .conv-item:hover,body.light .conv-item.active{background:#e5e7eb}
+.conv-item-info{flex:1;min-width:0}
+.conv-title{font-size:15px;margin-bottom:4px}
+.conv-preview{font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-tag{font-size:10px;padding:1px 4px;border-radius:3px;background:#374151;color:#aaa;margin-left:4px}
+.del-friend-btn,.conv-group-opt-btn{
+  background:var(--danger);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:4px 8px;
+  font-size:12px;
+}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.btn{width:100%;padding:9px;border-radius:8px;border:none;cursor:pointer;font-size:14px}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:#2a2a2a;color:#eee;margin-top:8px}
+body.light .btn-secondary{background:#e5e7eb;color:#111}
+.btn-danger{background:var(--danger);color:#fff}
+.btn:hover{opacity:0.9}
+/* 聊天主区域 */
+.chat-main{flex:1;display:flex;flex-direction:column;background:var(--bg);height:100vh;overflow:hidden}
+.chat-header{height:56px;padding:0 20px;display:flex;align-items:center;border-bottom:1px solid var(--border);font-size:16px}
+.message-container{flex:1;padding:20px;overflow-y:auto}
+.msg{max-width:75%;margin-bottom:16px;display:flex;flex-direction:column}
+.msg.friend,.msg.other{align-items:flex-start}
+.msg.me{align-items:flex-end}
+.msg-sender-name{font-size:11px;color:var(--text-muted);margin-bottom:2px}
+.msg-bubble-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.msg-time{
+  font-size:11px;
+  color:var(--text-muted);
+}
+.msg-bubble{padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-all}
+.msg-img{
+  max-width:220px;
+  border-radius:10px;
+  display:block;cursor:pointer;
+}
+.msg-video{
+  max-width:240px;
+  border-radius:10px;
+}
+.friend .msg-bubble,.other .msg-bubble{background:#272727;color:#eee;border-bottom-left-radius:4px}
+.me .msg-bubble{background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+body.light .friend .msg-bubble,body.light .other .msg-bubble{background:#e5e7eb;color:#111}
+.revoke-btn{
+  font-size:11px;
+  color:#aaa;
+  background:none;
+  border:none;
+  cursor:pointer;
+}
+.revoke-btn:hover{color:#f87171}
+.msg-revoked{
+  color:#777;
+  font-size:13px;
+  font-style:italic;
+}
+.input-area{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center}
+#msg-input{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;outline:none}
+#msg-input:disabled{opacity:0.4;cursor:not-allowed}
+#msg-input:focus{border-color:#444}
+#send-btn{padding:0 18px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer}
+#send-btn:disabled{opacity:0.4;cursor:not-allowed}
+#send-btn:hover:not(:disabled){background:#1d4ed8}
+#imgSendInput{display:none}
+.img-send-btn{
+  padding:0 12px;
+  background:#2a2a2a;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+body.light .img-send-btn{background:#d1d5db;color:#111}
+
+/* =========图片放大预览弹窗========== */
+.image-preview-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;
+}
+.image-preview-mask img{max-width:100%;max-height:90vh;border-radius:8px}
+
+/* =========社区页面样式========== */
+.community-wrap{
+  height:100%;
+  overflow-y:auto;
+  padding:16px;
+}
+.community-publish-box{
+  background:var(--bg-secondary);
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:16px;
+  border:1px solid var(--border);
+}
+.community-textarea{
+  width:100%;
+  min-height:80px;
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px;
+  color:var(--text);
+  outline:none;
+  resize:none;
+}
+.community-file-row{
+  display:flex;gap:8px;margin:10px 0;
+}
+.comm-preview-media{
+  max-width:180px;
+  border-radius:8px;
+  margin:8px 0;
+}
+.community-item{
+  background:var(--bg-secondary);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:14px;
+}
+.comm-user-head{
+  display:flex;gap:10px;align-items:center;margin-bottom:10px;justify-content:space-between;
+}
+.comm-user-left{
+  display:flex;gap:10px;align-items:center;
+}
+.comm-avatar{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;background:#333;
+}
+.comm-user-name{font-weight:500;font-size:14px;}
+.comm-time{font-size:12px;color:var(--text-muted);}
+.comm-content{margin:8px 0;font-size:14px;line-height:1.5;}
+.comm-media{max-width:100%;border-radius:10px;margin:8px 0;cursor:pointer;}
+.comm-video{max-width:100%;border-radius:10px;}
+.comm-action-bar{
+  display:flex;gap:12px;margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--border);
+}
+.comm-action-btn{
+  background:none;border:none;color:#ccc;font-size:13px;cursor:pointer;
+}
+body.light .comm-action-btn{color:#444}
+.comm-action-btn:hover{color:var(--text)}
+.comm-delete-btn{
+  color:#ef4444;
+}
+/*评论区*/
+.comm-comment-wrap{
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid var(--border);
+}
+.comm-comment-item{
+  font-size:13px;
+  padding:6px 0;
+  color:var(--text);
+}
+.comm-comment-input-row{
+  display:flex;gap:6px;margin-top:8px;
+}
+.comm-comment-input{
+  flex:1;
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:6px 8px;
+  color:var(--text);
+  outline:none;
+}
+.comm-comment-send{
+  padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;
+}
+
+/* =========个人主页========== */
+.profile-wrap{height:100%;overflow-y:auto;padding:20px;}
+.profile-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;}
+.profile-big-avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#333;margin:0 auto 12px;}
+.profile-desc{margin-top:10px;font-size:14px;color:var(--text-muted)}
+
+/* =========群组页面========== */
+.group-wrap{height:100%;overflow-y:auto;padding:16px;}
+.group-create-box{background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;}
+.group-item{background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;cursor:pointer}
+.group-item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.group-member-list{max-height:140px;overflow-y:auto;font-size:13px;color:var(--text-muted)}
+.group-upgrade-tip{margin-top:8px;font-size:12px;color:#fbbf24}
+
+/* 弹窗模态框 */
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:999}
+.modal{width:92%;max-width:420px;background:var(--bg-secondary);border-radius:12px;padding:20px;border:1px solid var(--border)}
+.modal h3{margin-bottom:16px}
+.form-item{margin-bottom:14px}
+.form-item label{display:block;font-size:14px;color:var(--text);margin-bottom:6px}
+.form-item input{width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);outline:none}
+.modal-buttons{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+.modal-buttons button{padding:9px 16px;border-radius:8px;border:none;cursor:pointer}
+.modal-close{background:#333;color:#fff}
+body.light .modal-close{background:#d1d5db;color:#111}
+.modal-confirm{background:var(--primary);color:#fff}
+.tip-text{font-size:13px;color:var(--text-muted);margin-top:6px}
+.error-text{color:#f87171;font-size:13px;margin-top:4px}
+/* 好友列表 */
+.friend-search-box{padding:12px;border-bottom:1px solid var(--border);}
+#friend-email-search{width:100%;padding:9px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+.friend-result{padding:10px 16px;color:var(--text-muted);font-size:14px}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:#383838;border-radius:3px}
+
+/* ==========手机适配========== */
+@media (max-width:768px){
+  .sidebar-toggle{
+    display:block;
+  }
+  body{
+    position:relative;
+  }
+  .sidebar{
+    position:absolute;
+    top:0;
+    left:0;
+    height:100vh;
+    z-index:900;
+  }
+  .sidebar.hidden-sidebar{
+    transform:translateX(-100%);
+  }
+  .msg{
+    max-width:85%;
+  }
+  .msg-img{max-width:160px;}
+  .input-area{
+    padding:10px 12px;
+  }
+  .message-container{
+    padding:12px;
+  }
+}
+</style>
+</head>
+<body>
+<button class="sidebar-toggle" id="toggleSidebar">菜单</button>
+<!--图片预览弹窗-->
+<div class="image-preview-mask" id="imagePreviewMask">
+  <img id="previewImg" src="">
+</div>
+<!-- 侧边栏 -->
+<div class="sidebar" id="sidebarWrap">
+  <div class="sidebar-header">
+    <div class="sidebar-title">聊天</div>
+  </div>
+  <div class="user-info" id="userBlock">
+    <img class="avatar" id="avatarImg" src="" alt="">
+    <div class="user-meta">
+      <div class="user-name" id="showName">未登录</div>
+      <div class="user-email" id="showEmail">-</div>
+    </div>
+  </div>
+  <div style="padding:0 16px 8px">
+    <button class="btn btn-secondary" id="editProfileBtn">修改昵称/头像</button>
+  </div>
+  <div class="profile-tab-btn">
+    <button class="btn btn-secondary" id="goProfileBtn">个人主页</button>
+  </div>
+  <div class="community-tab-btn">
+    <button class="btn btn-primary" id="goCommunityBtn">社区广场</button>
+  </div>
+  <div class="group-tab-btn">
+    <button class="btn btn-secondary" id="goGroupBtn">群组</button>
+  </div>
+  <div class="theme-tab-btn">
+    <button class="btn btn-secondary" id="toggleThemeBtn">切换主题</button>
+  </div>
+  <div class="friend-search-box">
+    <input id="friend-email-search" placeholder="搜索邮箱添加好友">
+  </div>
+  <div class="friend-result" id="friendSearchResult"></div>
+  <div class="conversation-list" id="convList">
+  </div>
+  <div class="sidebar-footer">
+    <button class="btn btn-primary" id="loginBtn">登录 / 注册</button>
+    <button class="btn btn-secondary" id="logoutBtn" style="display:none">退出登录</button>
+  </div>
+</div>
+<!-- 聊天主区域 -->
+<div class="chat-main">
+  <div class="chat-header" id="chatTitle">请先登录并选择好友/群组</div>
+  <!-- 聊天视图 -->
+  <div id="chatView">
+    <div class="message-container" id="msgBox"></div>
+    <div class="input-area">
+      <input id="msg-input" placeholder="登录后才能发送消息" disabled />
+      <input type="file" id="imgSendInput" accept="image/*,video/*">
+      <button class="img-send-btn" id="imgSendBtn">选择文件</button>
+      <button id="send-btn" disabled>发送</button>
+    </div>
+  </div>
+  <!-- 社区视图 -->
+  <div id="communityView" style="display:none;height:100%;overflow:hidden;">
+    <div class="community-wrap">
+      <div class="community-publish-box">
+        <textarea class="community-textarea" id="commText" placeholder="输入动态内容..."></textarea>
+        <div class="community-file-row">
+          <button class="btn btn-secondary" id="commSelectMedia">选择图片/视频</button>
+          <input type="file" id="commMediaInput" accept="image/*,video/*" style="display:none;">
+          <button class="btn btn-primary" id="commPublish">发布动态</button>
+        </div>
+        <div id="commPreviewWrap"></div>
+      </div>
+      <div id="commListWrap"></div>
+    </div>
+  </div>
+  <!--个人主页视图-->
+  <div id="profileView" style="display:none;height:100%;overflow:hidden;">
+    <div class="profile-wrap">
+      <div class="profile-card">
+        <img class="profile-big-avatar" id="profileBigAvatar" src="">
+        <h2 id="profileName"></h2>
+        <div class="profile-desc" id="profileEmail"></div>
+        <div class="profile-desc">可在此修改个人资料</div>
+        <button class="btn btn-primary" id="profileOpenEdit" style="margin-top:16px">编辑资料</button>
+      </div>
+    </div>
+  </div>
+  <!--群组管理视图-->
+  <div id="groupView" style="display:none;height:100%;overflow:hidden;">
+    <div class="group-wrap">
+      <div class="group-create-box">
+        <h4>创建新群组</h4>
+        <div class="form-item">
+          <label>群组名称</label>
+          <input id="newGroupName" placeholder="输入群组名字">
+        </div>
+        <button class="btn btn-primary" id="createGroupBtn">创建群组（初始200人上限）</button>
+      </div>
+      <div id="groupListWrap"></div>
+    </div>
+  </div>
+</div>
+<!-- 登录弹窗 -->
+<div class="modal-mask" id="loginModal">
+  <div class="modal">
+    <h3>账号</h3>
+    <div class="form-item">
+      <label>邮箱</label>
+      <input id="loginEmail" placeholder="输入邮箱">
+      <div class="error-text" id="emailErr"></div>
+    </div>
+    <div class="form-item">
+      <label>昵称</label>
+      <input id="loginName" placeholder="自定义昵称">
+    </div>
+    <div class="form-item">
+      <label>头像图片链接（可选）</label>
+      <input id="loginAvatar" placeholder="填入图片URL">
+    </div>
+    <div class="form-item">
+      <label>或者从相册选择头像</label>
+      <input type="file" id="avatarFileInput" accept="image/*">
+      <div class="tip-text">选择本地图片自动转为头像</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="modal-close" id="closeLogin">取消</button>
+      <button class="modal-confirm" id="confirmLogin">登录/注册</button>
+    </div>
+  </div>
+</div>
+<!-- 修改资料弹窗 -->
+<div class="modal-mask" id="editModal">
+  <div class="modal">
+    <h3>修改个人资料</h3>
+    <div class="form-item">
+      <label>新昵称</label>
+      <input id="editName" placeholder="输入昵称">
+    </div>
+    <div class="form-item">
+      <label>头像链接</label>
+      <input id="editAvatarUrl" placeholder="图片URL">
+    </div>
+    <div class="form-item">
+      <label>相册选择头像</label>
+      <input type="file" id="editAvatarFile" accept="image/*">
+    </div>
+    <div class="modal-buttons">
+      <button class="modal-close" id="closeEdit">取消</button>
+      <button class="modal-confirm" id="saveEdit">保存修改</button>
+    </div>
+  </div>
+</div>
+<!--群组弹窗：升级、加人、解散、退出-->
+<div class="modal-mask" id="groupModal">
+  <div class="modal">
+    <h3 id="groupModalTitle">群组操作</h3>
+    <div class="form-item">
+      <label>添加成员邮箱</label>
+      <input id="groupAddMemberInput" placeholder="输入用户邮箱">
+    </div>
+    <div id="groupModalInfo"></div>
+    <div class="modal-buttons">
+      <button class="modal-close" id="closeGroupModal">关闭</button>
+      <button class="modal-confirm" id="groupAddMemberBtn">添加成员</button>
+      <button class="btn-danger" id="groupUpgradeBtn">升级人数上限</button>
+      <button class="btn-danger" id="groupQuitBtn">退出群组</button>
+      <button class="btn-danger" id="groupDissolveBtn">解散群组(仅群主)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 本地数据库
+const DB = {
+  getUsers(){
+    return JSON.parse(localStorage.getItem("chat_users") || "{}")
+  },
+  saveUsers(obj){
+    localStorage.setItem("chat_users", JSON.stringify(obj))
+  },
+  getCurrentUser(){
+    return JSON.parse(localStorage.getItem("chat_current") || "null")
+  },
+  setCurrentUser(u){
+    localStorage.setItem("chat_current", JSON.stringify(u))
+  },
+  getFriends(){
+    return JSON.parse(localStorage.getItem("chat_friends") || "{}")
+  },
+  saveFriends(obj){
+    localStorage.setItem("chat_friends", JSON.stringify(obj))
+  },
+  getChat(){
+    return JSON.parse(localStorage.getItem("chat_msg") || "{}")
+  },
+  saveChat(obj){
+    localStorage.setItem("chat_msg", JSON.stringify(obj))
+  },
+  getCommunity(){
+    return JSON.parse(localStorage.getItem("chat_community")||"[]")
+  },
+  saveCommunity(arr){
+    localStorage.setItem("chat_community",JSON.stringify(arr))
+  },
+  getGroups(){
+    return JSON.parse(localStorage.getItem("chat_groups")||"[]")
+  },
+  saveGroups(arr){
+    localStorage.setItem("chat_groups",JSON.stringify(arr))
+  },
+  getGroupChat(){
+    return JSON.parse(localStorage.getItem("chat_group_msg")||"{}")
+  },
+  saveGroupChat(obj){
+    localStorage.setItem("chat_group_msg",JSON.stringify(obj))
+  }
+}
+// 配置
+const REVOKE_EXPIRE = 2 * 60 * 1000;
+//群组升级规则：初始200，第一次升级500，后续每次+300
+function calcGroupMax(oldMax){
+  if(oldMax===200) return 500;
+  return oldMax + 300;
+}
+
+// DOM
+const userBlock = document.getElementById("userBlock")
+const showName = document.getElementById("showName")
+const showEmail = document.getElementById("showEmail")
+const avatarImg = document.getElementById("avatarImg")
+const loginBtn = document.getElementById("loginBtn")
+const logoutBtn = document.getElementById("logoutBtn")
+const loginModal = document.getElementById("loginModal")
+const closeLogin = document.getElementById("closeLogin")
+const confirmLogin = document.getElementById("confirmLogin")
+const loginEmail = document.getElementById("loginEmail")
+const loginName = document.getElementById("loginName")
+const loginAvatar = document.getElementById("loginAvatar")
+const avatarFileInput = document.getElementById("avatarFileInput")
+const emailErr = document.getElementById("emailErr")
+const convList = document.getElementById("convList")
+const chatTitle = document.getElementById("chatTitle")
+const msgBox = document.getElementById("msgBox")
+const msgInput = document.getElementById("msg-input")
+const sendBtn = document.getElementById("send-btn")
+const friendSearchInput = document.getElementById("friend-email-search")
+const friendSearchResult = document.getElementById("friendSearchResult")
+const sidebarWrap = document.getElementById("sidebarWrap")
+const toggleSidebar = document.getElementById("toggleSidebar")
+
+//修改资料弹窗dom
+const editProfileBtn = document.getElementById("editProfileBtn")
+const editModal = document.getElementById("editModal")
+const closeEdit = document.getElementById("closeEdit")
+const saveEdit = document.getElementById("saveEdit")
+const editName = document.getElementById("editName")
+const editAvatarUrl = document.getElementById("editAvatarUrl")
+const editAvatarFile = document.getElementById("editAvatarFile")
+
+//图片发送dom
+const imgSendBtn = document.getElementById("imgSendBtn")
+const imgSendInput = document.getElementById("imgSendInput")
+
+//社区dom
+const goCommunityBtn = document.getElementById("goCommunityBtn")
+const chatView = document.getElementById("chatView")
+const communityView = document.getElementById("communityView")
+const commText = document.getElementById("commText")
+const commSelectMedia = document.getElementById("commSelectMedia")
+const commMediaInput = document.getElementById("commMediaInput")
+const commPublish = document.getElementById("commPublish")
+const commPreviewWrap = document.getElementById("commPreviewWrap")
+const commListWrap = document.getElementById("commListWrap")
+
+//个人主页
+const goProfileBtn = document.getElementById("goProfileBtn")
+const profileView = document.getElementById("profileView")
+const profileBigAvatar = document.getElementById("profileBigAvatar")
+const profileName = document.getElementById("profileName")
+const profileEmail = document.getElementById("profileEmail")
+const profileOpenEdit = document.getElementById("profileOpenEdit")
+
+//主题切换
+const toggleThemeBtn = document.getElementById("toggleThemeBtn")
+
+//图片预览
+const imagePreviewMask = document.getElementById("imagePreviewMask")
+const previewImg = document.getElementById("previewImg")
+
+//群组dom
+const goGroupBtn = document.getElementById("goGroupBtn")
+const groupView = document.getElementById("groupView")
+const newGroupName = document.getElementById("newGroupName")
+const createGroupBtn = document.getElementById("createGroupBtn")
+const groupListWrap = document.getElementById("groupListWrap")
+const groupModal = document.getElementById("groupModal")
+const closeGroupModal = document.getElementById("closeGroupModal")
+const groupModalTitle = document.getElementById("groupModalTitle")
+const groupModalInfo = document.getElementById("groupModalInfo")
+const groupAddMemberInput = document.getElementById("groupAddMemberInput")
+const groupAddMemberBtn = document.getElementById("groupAddMemberBtn")
+const groupUpgradeBtn = document.getElementById("groupUpgradeBtn")
+const groupQuitBtn = document.getElementById("groupQuitBtn")
+const groupDissolveBtn = document.getElementById("groupDissolveBtn")
+
+//会话状态: type:friend / group; id为邮箱或者group数组下标
+let currentConv = {type:null,id:null}
+let tempAvatarBase64 = "";
+let editTempAvatar = "";
+let commMediaBase64 = null;
+let commMediaType = null;
+let currentOperateGroupIndex = null;
+
+//图片预览关闭
+imagePreviewMask.onclick=()=>{imagePreviewMask.style.display="none"}
+// 手机侧边栏切换
+toggleSidebar.onclick = ()=>{
+  sidebarWrap.classList.toggle("hidden-sidebar")
+}
+//主题切换+本地记忆
+;(function loadTheme(){
+  const t = localStorage.getItem("chat_theme")
+  if(t==="light") document.body.classList.add("light")
+})()
+toggleThemeBtn.onclick=()=>{
+  document.body.classList.toggle("light")
+  if(document.body.classList.contains("light")){
+    localStorage.setItem("chat_theme","light")
+  }else{
+    localStorage.removeItem("chat_theme")
+  }
+}
+
+//登录弹窗头像文件选择
+avatarFileInput.onchange = function(e){
+  const file = e.target.files[0]
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    tempAvatarBase64 = ev.target.result;
+  }
+  reader.readAsDataURL(file);
+}
+//编辑资料头像文件
+editAvatarFile.onchange = function(e){
+  const file = e.target.files[0]
+  if(!file)return;
+  const r = new FileReader()
+  r.onload=ev=>editTempAvatar = ev.target.result
+  r.readAsDataURL(file)
+}
+
+//发送图片（区分私聊/群聊）
+imgSendBtn.onclick=()=>{
+  if(!DB.getCurrentUser()||!currentConv.type)return;
+  imgSendInput.click()
+}
+imgSendInput.onchange=function(e){
+  const file = e.target.files[0]
+  if(!file)return
+  const reader = new FileReader()
+  const isVideo = file.type.startsWith("video/")
+  reader.onload=ev=>{
+    if(currentConv.type==="friend"){
+      sendFriendImageMsg(ev.target.result,isVideo)
+    }else if(currentConv.type==="group"){
+      sendGroupImageMsg(ev.target.result,isVideo)
+    }
+  }
+  reader.readAsDataURL(file)
+  imgSendInput.value=""
+}
+
+//私聊发送图片
+function sendFriendImageMsg(base64,isVideo){
+  const me = DB.getCurrentUser()
+  const friendEmail = currentConv.id
+  const chatKey = [me.email, friendEmail].sort().join("_")
+  const allChat = DB.getChat()
+  if(!allChat[chatKey]) allChat[chatKey]=[]
+  const idx = allChat[chatKey].length
+  addMsgRender(null,base64,isVideo,true,false,idx,false,Date.now())
+  allChat[chatKey].push({sender:me.email,text:null,media:base64,mediaType:isVideo?"video":"image",time:Date.now(),revoked:false})
+  DB.saveChat(allChat)
+  renderConversationList()
+}
+//群聊发送图片
+function sendGroupImageMsg(base64,isVideo){
+  const me = DB.getCurrentUser()
+  const gIdx = currentConv.id
+  const groupChat = DB.getGroupChat()
+  if(!groupChat[gIdx]) groupChat[gIdx]=[]
+  const idx = groupChat[gIdx].length
+  addMsgRender(null,base64,isVideo,true,true,idx,false,Date.now(),me.name)
+  groupChat[gIdx].push({sender:me.email,senderName:me.name,text:null,media:base64,mediaType:isVideo?"video":"image",time:Date.now(),revoked:false})
+  DB.saveGroupChat(groupChat)
+  renderConversationList()
+}
+
+//格式化时间
+function formatTime(timestamp){
+  const d=new Date(timestamp)
+  let h=d.getHours().toString().padStart(2,'0')
+  let m=d.getMinutes().toString().padStart(2,'0')
+  return `${h}:${m}`
+}
+function formatFullTime(timestamp){
+  const d=new Date(timestamp)
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
+}
+//消息预览简短文本
+function getMsgPreview(item){
+  if(item.revoked) return "【消息已撤回】"
+  if(item.media) return "[图片/视频]"
+  let s = item.text
+  if(s.length>18) return s.slice(0,18)+"…"
+  return s
+}
+
+// 邮箱正则
+function isEmailValid(email){
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+}
+// 渲染当前登录状态
+function renderUser(){
+  const user = DB.getCurrentUser()
+  if(!user){
+    showName.innerText = "未登录"
+    showEmail.innerText = "-"
+    avatarImg.src = ""
+    loginBtn.style.display = "block"
+    logoutBtn.style.display = "block"
+    editProfileBtn.style.display="none"
+    goCommunityBtn.style.display="none"
+    goProfileBtn.style.display="none"
+    goGroupBtn.style.display="none"
+    toggleThemeBtn.style.display="none"
+    msgInput.disabled = true
+    sendBtn.disabled = true
+    imgSendBtn.disabled=true
+    currentConv={type:null,id:null}
+    return
+  }
+  showName.innerText = user.name
+  showEmail.innerText = user.email
+  avatarImg.src = user.avatar || ""
+  loginBtn.style.display = "none"
+  logoutBtn.style.display = "block"
+  editProfileBtn.style.display="block"
+  goCommunityBtn.style.display="block"
+  goProfileBtn.style.display="block"
+  goGroupBtn.style.display="block"
+  toggleThemeBtn.style.display="block"
+  msgInput.disabled = false
+  sendBtn.disabled = false
+  imgSendBtn.disabled=false
+  renderConversationList()
+}
+
+//打开编辑弹窗
+editProfileBtn.onclick=()=>{
+  const u=DB.getCurrentUser()
+  editName.value=u.name
+  editAvatarUrl.value=u.avatar||""
+  editTempAvatar=""
+  editModal.style.display="flex"
+}
+profileOpenEdit.onclick=()=>editProfileBtn.click()
+closeEdit.onclick=()=>{
+  editModal.style.display="none"
+  editTempAvatar=""
+  editAvatarFile.value=""
+}
+saveEdit.onclick=()=>{
+  const me=DB.getCurrentUser()
+  if(!me)return
+  const newName=editName.value.trim()
+  if(!newName)return
+  const users=DB.getUsers()
+  let newAvatar=editTempAvatar?editTempAvatar:editAvatarUrl.value.trim()
+  users[me.email].name=newName
+  if(newAvatar) users[me.email].avatar=newAvatar
+  DB.saveUsers(users)
+  DB.setCurrentUser(users[me.email])
+  editModal.style.display="none"
+  editTempAvatar=""
+  editAvatarFile.value=""
+  renderUser()
+  renderProfilePage()
+}
+
+//切换个人主页
+goProfileBtn.onclick=()=>{
+  chatView.style.display="none"
+  communityView.style.display="none"
+  groupView.style.display="none"
+  profileView.style.display="block"
+  chatTitle.innerText="个人主页"
+  renderProfilePage()
+  if(window.innerWidth<=768) sidebarWrap.classList.add("hidden-sidebar")
+}
+function renderProfilePage(){
+  const u=DB.getCurrentUser()
+  if(!u)return;
+  profileBigAvatar.src=u.avatar||""
+  profileName.innerText=u.name
+  profileEmail.innerText=u.email
+}
+
+// =========社区逻辑========
+goCommunityBtn.onclick=()=>{
+  chatView.style.display="none"
+  profileView.style.display="none"
+  groupView.style.display="none"
+  communityView.style.display="block"
+  chatTitle.innerText="社区广场"
+  renderCommunity()
+  if(window.innerWidth<=768) sidebarWrap.classList.add("hidden-sidebar")
+}
+commSelectMedia.onclick=()=>commMediaInput.click()
+commMediaInput.onchange=e=>{
+  const f=e.target.files[0]
+  if(!f)return
+  const r=new FileReader()
+  r.onload=ev=>{
+    commMediaBase64=ev.target.result
+    commMediaType=f.type.startsWith("video/")?"video":"image"
+    if(commMediaType==="image"){
+      commPreviewWrap.innerHTML=`<img class="comm-preview-media" src="${commMediaBase64}">`
+    }else{
+      commPreviewWrap.innerHTML=`<video class="comm-preview-media" controls src="${commMediaBase64}"></video>`
+    }
+  }
+  r.readAsDataURL(f)
+}
+commPublish.onclick=()=>{
+  const me=DB.getCurrentUser()
+  if(!me)return
+  const text=commText.value.trim()
+  if(!text&&!commMediaBase64){
+    alert("请填写文字或者选择图片/视频！")
+    return;
+  }
+  const posts=DB.getCommunity()
+  posts.push({
+    uid:me.email,
+    userName:me.name,
+    avatar:me.avatar||"",
+    text:text,
+    media:commMediaBase64,
+    mediaType:commMediaType,
+    time:Date.now(),
+    likes:[],
+    comments:[]
+  })
+  DB.saveCommunity(posts)
+  commText.value=""
+  commPreviewWrap.innerHTML=""
+  commMediaBase64=null
+  commMediaType=null
+  commMediaInput.value=""
+  renderCommunity()
+}
+commListWrap.onclick = function(e){
+  const me = DB.getCurrentUser();
+  const target = e.target;
+  if(target.tagName==="IMG"&&target.classList.contains("comm-media")){
+    previewImg.src=target.src;
+    imagePreviewMask.style.display="flex";
+    return;
+  }
+  if(!me) return;
+  const postIndex = Number(target.dataset.idx);
+  const posts = DB.getCommunity();
+  const post = posts[postIndex];
+  if(!post) return;
+  if(target.classList.contains("post-delete")){
+    if(post.uid !== me.email) return;
+    posts.splice(postIndex,1);
+    DB.saveCommunity(posts);
+    renderCommunity();
+    return;
+  }
+  if(target.classList.contains("post-like")){
+    const arr = post.likes;
+    if(arr.includes(me.email)){
+      post.likes = arr.filter(x=>x!==me.email);
+    }else{
+      post.likes.push(me.email);
+    }
+    DB.saveCommunity(posts);
+    renderCommunity();
+    return;
+  }
+  if(target.classList.contains("post-comment-send")){
+    const inputEl = document.querySelector(`[data-comment-idx="${postIndex}"]`)
+    const ctext = inputEl.value.trim();
+    if(!ctext) return;
+    post.comments.push({
+      uid:me.email,
+      userName:me.name,
+      text:ctext,
+      time:Date.now()
+    })
+    DB.saveCommunity(posts);
+    renderCommunity();
+  }
+}
+function renderCommunity(){
+  const posts=DB.getCommunity()
+  const me = DB.getCurrentUser();
+  commListWrap.innerHTML=""
+  posts.slice().reverse().forEach((p,revIdx)=>{
+    const realIdx = posts.length - 1 - revIdx;
+    let mediaHtml=""
+    if(p.media){
+      if(p.mediaType==="image"){
+        mediaHtml=`<img class="comm-media" src="${p.media}">`
+      }else{
+        mediaHtml=`<video class="comm-video" controls src="${p.media}"></video>`
+      }
+    }
+    let commentHtml = "";
+    p.comments.forEach(c=>{
+      commentHtml += `<div class="comm-comment-item"><b>${c.userName}</b>：${c.text}</div>`
+    })
+    const isMyPost = me && p.uid === me.email;
+    const hasLiked = me && p.likes.includes(me.email);
+    const likeText = hasLiked ? `已赞(${p.likes.length})` : `点赞(${p.likes.length})`;
+    const div=document.createElement("div")
+    div.className="community-item"
+    div.innerHTML=`
+    <div class="comm-user-head">
+      <div class="comm-user-left">
+        <img class="comm-avatar" src="${p.avatar}" alt="">
+        <div>
+          <div class="comm-user-name">${p.userName}</div>
+          <div class="comm-time">${formatFullTime(p.time)}</div>
+        </div>
+      </div>
+      ${isMyPost ? `<button class="comm-action-btn comm-delete-btn post-delete" data-idx="${realIdx}">删除</button>`:""}
+    </div>
+    <div class="comm-content">${p.text||""}</div>
+    ${mediaHtml}
+    <div class="comm-action-bar">
+      <button class="comm-action-btn post-like" data-idx="${realIdx}">${likeText}</button>
+    </div>
+    <div class="comm-comment-wrap">
+      ${commentHtml}
+      <div class="comm-comment-input-row">
+        <input class="comm-comment-input" data-comment-idx="${realIdx}" placeholder="写评论...">
+        <button class="comm-comment-send post-comment-send" data-idx="${realIdx}">发送</button>
+      </div>
+    </div>
+    `
+    commListWrap.appendChild(div)
+  })
+}
+
+// =========群组模块========
+goGroupBtn.onclick=()=>{
+  chatView.style.display="none"
+  profileView.style.display="none"
+  communityView.style.display="none"
+  groupView.style.display="block"
+  chatTitle.innerText="群组管理"
+  renderGroupPage()
+  if(window.innerWidth<=768) sidebarWrap.classList.add("hidden-sidebar")
+}
+//创建群组
+createGroupBtn.onclick=()=>{
+  const me=DB.getCurrentUser();
+  const gname=newGroupName.value.trim();
+  if(!gname){alert("请输入群组名称");return}
+  const groups=DB.getGroups();
+  groups.push({
+    name:gname,
+    owner:me.email,
+    maxMember:200,
+    members:[me.email]
+  })
+  DB.saveGroups(groups);
+  newGroupName.value=""
+  renderGroupPage()
+  renderConversationList()
+}
+//渲染群组管理页面
+function renderGroupPage(){
+  const me=DB.getCurrentUser();
+  const groups=DB.getGroups();
+  groupListWrap.innerHTML=""
+  groups.forEach((g,idx)=>{
+    if(!g.members.includes(me.email)) return
+    const isOwner = g.owner===me.email;
+    const memberText = g.members.map(m=>m).join("、")
+    const div=document.createElement("div")
+    div.className="group-item"
+    div.innerHTML=`
+      <div class="group-item-head">
+        <div><strong>${g.name}</strong> (${g.members.length}/${g.maxMember})</div>
+        ${isOwner?"<span style='color:#fbbf24'>群主</span>":""}
+      </div>
+      <div class="group-member-list">成员：${memberText||"无"}</div>
+      <div class="group-upgrade-tip">点击打开管理面板，可添加成员、退出/解散</div>
+    `
+    div.onclick=()=>{
+      currentOperateGroupIndex=idx;
+      openGroupModal(idx);
+    }
+    groupListWrap.appendChild(div)
+  })
+}
+function openGroupModal(gidx){
+  const groups=DB.getGroups()
+  const g=groups[gidx]
+  groupModalTitle.innerText=`群组【${g.name}】管理`
+  groupModalInfo.innerText=`当前成员数：${g.members.length} / 上限：${g.maxMember}`
+  groupAddMemberInput.value=""
+  //按钮权限
+  const me = DB.getCurrentUser()
+  groupDissolveBtn.style.display = g.owner===me.email ? "block":"none"
+  groupUpgradeBtn.style.display = g.owner===me.email ? "block":"none"
+  groupModal.style.display="flex"
+}
+closeGroupModal.onclick=()=>{
+  groupModal.style.display="none";currentOperateGroupIndex=null;
+}
+//添加群成员
+groupAddMemberBtn.onclick=()=>{
+  const gidx=currentOperateGroupIndex;
+  if(gidx===null)return;
+  const groups=DB.getGroups()
+  const g=groups[gidx]
+  const me = DB.getCurrentUser()
+  if(g.owner!==me.email){alert("只有群主可以添加成员");return}
+  const email=groupAddMemberInput.value.trim().toLowerCase()
+  if(!isEmailValid(email)){alert("邮箱格式错误");return}
+  if(g.members.includes(email)){alert("该用户已经在群内");return}
+  if(g.members.length >= g.maxMember){alert("已达到人数上限，请升级群组");return}
+  const users=DB.getUsers()
+  if(!users[email]){alert("该用户不存在");return}
+  g.members.push(email)
+  DB.saveGroups(groups)
+  renderGroupPage()
+  renderConversationList()
+  openGroupModal(gidx)
+}
+//升级群组
+groupUpgradeBtn.onclick=()=>{
+  const gidx=currentOperateGroupIndex;
+  if(gidx===null)return;
+  const groups=DB.getGroups()
+  const g=groups[gidx]
+  const me = DB.getCurrentUser()
+  if(g.owner!==me.email){alert("只有群主可以升级");return}
+  const newMax = calcGroupMax(g.maxMember);
+  g.maxMember = newMax;
+  DB.saveGroups(groups)
+  renderGroupPage()
+  renderConversationList()
+  openGroupModal(gidx)
+  alert(`升级成功！新上限：${newMax}人`)
+}
+//退出群组
+groupQuitBtn.onclick=()=>{
+  const gidx=currentOperateGroupIndex;
+  if(gidx===null)return;
+  const groups=DB.getGroups()
+  const g=groups[gidx]
+  const me = DB.getCurrentUser()
+  if(g.owner===me.email){
+    alert("群主不能直接退出，请先解散群组");
+    return
+  }
+  g.members = g.members.filter(e=>e!==me.email)
+  DB.saveGroups(groups)
+  groupModal.style.display="none"
+  currentOperateGroupIndex=null
+  //如果当前正在此群会话，清空
+  if(currentConv.type==="group"&&currentConv.id===gidx){
+    currentConv={type:null,id:null}
+    msgBox.innerHTML=""
+    chatTitle.innerText="请先登录并选择好友/群组"
+  }
+  renderGroupPage()
+  renderConversationList()
+}
+//解散群组
+groupDissolveBtn.onclick=()=>{
+  const gidx=currentOperateGroupIndex;
+  if(gidx===null)return;
+  const groups=DB.getGroups()
+  const g=groups[gidx]
+  const me = DB.getCurrentUser()
+  if(g.owner!==me.email){alert("仅群主可解散");return}
+  if(!confirm(`确认解散群组【${g.name}】？所有群消息全部删除，不可恢复！`)) return
+  groups.splice(gidx,1)
+  const groupChat = DB.getGroupChat()
+  delete groupChat[gidx]
+  DB.saveGroups(groups)
+  DB.saveGroupChat(groupChat)
+  groupModal.style.display="none"
+  currentOperateGroupIndex=null
+  if(currentConv.type==="group"&&currentConv.id===gidx){
+    currentConv={type:null,id:null}
+    msgBox.innerHTML=""
+    chatTitle.innerText="请先登录并选择好友/群组"
+  }
+  renderGroupPage()
+  renderConversationList()
+}
+
+// ==========侧边栏会话列表（私聊+群组，带最新消息预览）==========
+function renderConversationList(){
+  const me = DB.getCurrentUser()
+  convList.innerHTML=""
+  if(!me) return
+  const users = DB.getUsers()
+  const friends = DB.getFriends()[me.email]||[]
+  const allChat = DB.getChat()
+  const groupsAll = DB.getGroups()
+  const groupChat = DB.getGroupChat()
+
+  //渲染私聊会话
+  friends.forEach(fEmail=>{
+    const fUser = users[fEmail]
+    const chatKey = [me.email,fEmail].sort().join("_")
+    const msgs = allChat[chatKey]||[]
+    const lastPreview = msgs.length>0 ? getMsgPreview(msgs[msgs.length-1]) : "暂无消息"
+
+    const item = document.createElement("div")
+    item.className = "conv-item"
+    if(currentConv.type==="friend" && currentConv.id===fEmail) item.classList.add("active")
+    item.innerHTML = `
+      <div class="conv-item-info">
+        <div class="conv-title">${fUser.name}<span class="conv-tag">私聊</span></div>
+        <div class="conv-preview">${lastPreview}</div>
+      </div>
+      <button class="del-friend-btn" data-friend-email="${fEmail}">删除</button>
+    `
+    item.onclick = (ev)=>{
+      if(ev.target.classList.contains("del-friend-btn")) return;
+      chatView.style.display="block"
+      communityView.style.display="none"
+      profileView.style.display="none"
+      groupView.style.display="none"
+      currentConv = {type:"friend",id:fEmail}
+      chatTitle.innerText = `聊天：${fUser.name}`
+      loadFriendChatMsg(me.email,fEmail)
+      renderConversationList()
+      if(window.innerWidth <=768){
+        sidebarWrap.classList.add("hidden-sidebar")
+      }
+    }
+    convList.appendChild(item)
+  })
+
+  //渲染群组会话（我是成员才显示）
+  groupsAll.forEach((g,gIdx)=>{
+    if(!g.members.includes(me.email)) return
+    const gmsgs = groupChat[gIdx]||[]
+    const lastPreview = gmsgs.length>0 ? getMsgPreview(gmsgs[gmsgs.length-1]) : "暂无群消息"
+    const item = document.createElement("div")
+    item.className = "conv-item"
+    if(currentConv.type==="group" && currentConv.id===gIdx) item.classList.add("active")
+    item.innerHTML = `
+      <div class="conv-item-info">
+        <div class="conv-title">${g.name}<span class="conv-tag">群组</span></div>
+        <div class="conv-preview">${lastPreview}</div>
+      </div>
+    `
+    item.onclick = ()=>{
+      chatView.style.display="block"
+      communityView.style.display="none"
+      profileView.style.display="none"
+      groupView.style.display="none"
+      currentConv = {type:"group",id:gIdx}
+      chatTitle.innerText = `群聊：${g.name}`
+      loadGroupChatMsg(gIdx)
+      renderConversationList()
+      if(window.innerWidth <=768){
+        sidebarWrap.classList.add("hidden-sidebar")
+      }
+    }
+    convList.appendChild(item)
+  })
+  //绑定删除好友
+  convList.querySelectorAll(".del-friend-btn").forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation()
+      const email = e.target.dataset.friendEmail
+      window.delFriend(email)
+    }
+  })
+}
+
+//加载私聊消息
+function loadFriendChatMsg(myEmail, friendEmail){
+  msgBox.innerHTML = ""
+  const chatKey = [myEmail, friendEmail].sort().join("_")
+  const allChat = DB.getChat()
+  const msgs = allChat[chatKey] || []
+  msgs.forEach((m,idx)=>{
+    addMsgRender(m.text,m.media,m.mediaType==="video", m.sender === myEmail,false, idx, m.revoked,m.time)
+  })
+}
+//加载群聊消息
+function loadGroupChatMsg(gIdx){
+  msgBox.innerHTML = ""
+  const groupChat = DB.getGroupChat()
+  const msgs = groupChat[gIdx]||[]
+  const me = DB.getCurrentUser()
+  msgs.forEach((m,idx)=>{
+    const isMe = m.sender === me.email
+    addMsgRender(m.text,m.media,m.mediaType==="video", isMe,true, idx, m.revoked,m.time,m.senderName)
+  })
+}
+
+/**
+ * @param {string|null} text
+ * @param {string|null} mediaSrc
+ * @param {boolean} isVideo
+ * @param {boolean} isMe 是否自己发的
+ * @param {boolean} isGroup 是否群消息
+ * @param {number} msgIndex
+ * @param {boolean} isRevoked
+ * @param {number} timestamp
+ * @param {string|null} senderName 群聊发送者昵称
+ */
+function addMsgRender(text,mediaSrc,isVideo,isMe,isGroup,msgIndex,isRevoked,timestamp,senderName=null){
+  const div = document.createElement('div');
+  div.className = `msg ${isMe ? 'me' : (isGroup?'other':'friend')}`;
+  const timeStr = formatTime(timestamp||Date.now())
+  const now = Date.now();
+  const canRevoke = isMe && ((now - timestamp) < REVOKE_EXPIRE);
+
+  if(isRevoked){
+    div.innerHTML = `<div class="msg-revoked">消息已撤回</div><div class="msg-time">${timeStr}</div>`
+  }else{
+    let contentHtml=""
+    if(mediaSrc){
+      if(isVideo){
+        contentHtml=`<video class="msg-video" controls src="${mediaSrc}"></video>`
+      }else{
+        contentHtml=`<img class="msg-img" src="${mediaSrc}" alt="图片">`
+      }
+    }else{
+      contentHtml=`<div class="msg-bubble">${text}</div>`
+    }
+    let nameHtml = (isGroup&&!isMe) ? `<div class="msg-sender-name">${senderName||"未知用户"}</div>`:""
+    let revokeHtml = canRevoke ? `<button class="revoke-btn" data-idx="${msgIndex}" data-isgroup="${isGroup?'1':'0'}">撤回</button>` : ""
+    div.innerHTML = `
+      <div class="msg-bubble-wrap">
+        ${nameHtml}
+        ${contentHtml}
+        <div class="msg-time">${timeStr}</div>
+        ${revokeHtml}
+      </div>
+    `
+  }
+  //聊天图片点击放大
+  const imgDom = div.querySelector(".msg-img")
+  if(imgDom){
+    imgDom.onclick=()=>{
+      previewImg.src=imgDom.src;
+      imagePreviewMask.style.display="flex";
+    }
+  }
+  msgBox.appendChild(div);
+  msgBox.scrollTop = msgBox.scrollHeight;
+}
+
+//撤回消息（区分私聊/群聊）
+msgBox.onclick = function(e){
+  if(e.target.classList.contains("revoke-btn")){
+    const idx = Number(e.target.dataset.idx);
+    const isGroup = e.target.dataset.isgroup==="1"
+    const me = DB.getCurrentUser();
+    if(!me || !currentConv.type) return;
+    if(isGroup){
+      const gIdx = currentConv.id
+      const groupChat = DB.getGroupChat()
+      const msgs = groupChat[gIdx]
+      if(!msgs||!msgs[idx]) return
+      if(msgs[idx].sender!==me.email) return
+      if((Date.now()-msgs[idx].time)>=REVOKE_EXPIRE) return
+      msgs[idx].revoked=true
+      DB.saveGroupChat(groupChat)
+      loadGroupChatMsg(gIdx)
+    }else{
+      const friendEmail = currentConv.id
+      const chatKey = [me.email, friendEmail].sort().join("_")
+      const allChat = DB.getChat()
+      const msgs = allChat[chatKey]
+      if(!msgs || !msgs[idx]) return;
+      if(msgs[idx].sender !== me.email) return;
+      if((Date.now() - msgs[idx].time)>=REVOKE_EXPIRE) return;
+      msgs[idx].revoked = true;
+      DB.saveChat(allChat);
+      loadFriendChatMsg(me.email,friendEmail)
+    }
+    renderConversationList()
+  }
+}
+
+//发送文字消息（区分私聊/群聊）
+function sendMsg(){
+  const me = DB.getCurrentUser()
+  if(!me || !currentConv.type) return
+  const text = msgInput.value.trim()
+  if(!text) return
+
+  if(currentConv.type==="friend"){
+    const friendEmail = currentConv.id
+    const chatKey = [me.email, friendEmail].sort().join("_")
+    const allChat = DB.getChat()
+    if(!allChat[chatKey]) allChat[chatKey] = []
+    const newIndex = allChat[chatKey].length;
+    const now=Date.now()
+    addMsgRender(text,null,false, false,false, newIndex, false,now)
+    allChat[chatKey].push({sender:me.email, text,media:null,mediaType:null, time:now, revoked:false})
+    msgInput.value = ""
+    DB.saveChat(allChat)
+    loadFriendChatMsg(me.email,friendEmail)
+  }else if(currentConv.type==="group"){
+    const gIdx = currentConv.id
+    const groupChat = DB.getGroupChat()
+    if(!groupChat[gIdx]) groupChat[gIdx] = []
+    const newIndex = groupChat[gIdx].length;
+    const now=Date.now()
+    addMsgRender(text,null,false,true,true, newIndex, false,now,me.name)
+    groupChat[gIdx].push({sender:me.email,senderName:me.name, text,media:null,mediaType:null, time:now, revoked:false})
+    msgInput.value = ""
+    DB.saveGroupChat(groupChat)
+    loadGroupChatMsg(gIdx)
+  }
+  renderConversationList()
+}
+sendBtn.onclick = sendMsg
+msgInput.onkeydown = e=>{
+  if(e.key === 'Enter') sendMsg()
+}
+
+// 登录注册
+confirmLogin.onclick = ()=>{
+  emailErr.innerText = ""
+  const email = loginEmail.value.trim().toLowerCase()
+  const name = loginName.value.trim()
+  const avatarUrl = loginAvatar.value.trim()
+  let finalAvatar = ""
+  if(tempAvatarBase64){
+    finalAvatar = tempAvatarBase64
+  }else if(avatarUrl){
+    finalAvatar = avatarUrl
+  }
+
+  if(!isEmailValid(email)){
+    emailErr.innerText = "邮箱格式不正确"
+    return
+  }
+  if(!name){
+    emailErr.innerText = "请填写昵称"
+    return
+  }
+  const users = DB.getUsers()
+  if(!users[email]){
+    users[email] = {email,name,avatar:finalAvatar}
+    DB.saveUsers(users)
+  }else{
+    if(finalAvatar){
+      users[email].avatar = finalAvatar
+      DB.saveUsers(users)
+    }
+  }
+  DB.setCurrentUser(users[email])
+  loginModal.style.display = "none"
+  tempAvatarBase64 = ""
+  avatarFileInput.value = ""
+  renderUser()
+}
+loginBtn.onclick = ()=>{
+  loginModal.style.display = "flex"
+}
+closeLogin.onclick = ()=>{
+  loginModal.style.display = "none"
+  tempAvatarBase64 = ""
+  avatarFileInput.value = ""
+}
+// 退出登录
+logoutBtn.onclick = ()=>{
+  DB.setCurrentUser(null)
+  currentConv = {type:null,id:null}
+  chatTitle.innerText = "请先登录并选择好友/群组"
+  msgBox.innerHTML = ""
+  chatView.style.display="block"
+  communityView.style.display="none"
+  profileView.style.display="none"
+  groupView.style.display="none"
+  renderUser()
+}
+// 好友搜索：输入邮箱查找用户
+friendSearchInput.oninput = ()=>{
+  const searchEmail = friendSearchInput.value.trim().toLowerCase()
+  friendSearchResult.innerText = ""
+  if(!searchEmail) return
+  if(!isEmailValid(searchEmail)){
+    friendSearchResult.innerText = "邮箱格式错误"
+    return
+  }
+  const users = DB.getUsers()
+  const me = DB.getCurrentUser()
+  if(!users[searchEmail]){
+    friendSearchResult.innerText = "没有找到该邮箱用户"
+    return
+  }
+  if(me && searchEmail === me.email){
+    friendSearchResult.innerText = "不能添加自己为好友"
+    return
+  }
+  const friends = DB.getFriends()
+  const myFriends = friends[me.email] || []
+  if(myFriends.includes(searchEmail)){
+    friendSearchResult.innerText = "✅ 已经是好友"
+    return
+  }
+  friendSearchResult.innerHTML = `找到用户：${users[searchEmail].name} <button onclick="addFriend('${searchEmail}')">添加好友</button>`
+}
+// 添加好友
+window.addFriend = function(targetEmail){
+  const me = DB.getCurrentUser()
+  if(!me) return
+  const friends = DB.getFriends()
+  if(!friends[me.email]) friends[me.email] = []
+  friends[me.email].push(targetEmail)
+  DB.saveFriends(friends)
+  friendSearchResult.innerText = "✅ 好友添加成功"
+  renderConversationList()
+}
+// 删除好友
+window.delFriend = function(targetEmail){
+  const me = DB.getCurrentUser()
+  if(!me) return
+  const friends = DB.getFriends()
+  if(!friends[me.email]) return;
+  friends[me.email] = friends[me.email].filter(e=>e!==targetEmail)
+  DB.saveFriends(friends)
+  if(currentConv.type === "friend" && currentConv.id === targetEmail){
+    currentConv={type:null,id:null}
+    chatTitle.innerText = "请先登录并选择好友/群组";
+    msgBox.innerHTML = "";
+  }
+  renderConversationList()
+}
+
+// 初始化
+renderUser()
+</script>
+</body>
+</html>
